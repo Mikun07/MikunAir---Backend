@@ -22,7 +22,9 @@ async function runMigrations(): Promise<void> {
   await pool.end();
 }
 
-runMigrations().catch((err) => {
+try {
+  await runMigrations();
+} catch (err) {
   process.stderr.write(`Migration failed: ${String(err)}\n`);
   process.exit(1);
-});
+}
