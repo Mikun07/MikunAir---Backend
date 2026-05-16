@@ -1,0 +1,47 @@
+type Query {
+  searchFlights(
+    origin: String!
+    destination: String!
+    departureDate: String!
+    passengers: Int!
+    returnDate: String
+    seatClass: SeatClass
+  ): FlightSearchResult!
+}
+
+type FlightSearchResult {
+  outbound: [FlightOption!]!
+  inbound: [FlightOption!]
+}
+
+type FlightOption {
+  id: ID!
+  flightNumber: String!
+  origin: Airport!
+  destination: Airport!
+  departureAt: String!
+  arrivalAt: String!
+  durationMinutes: Int!
+  stops: Int!
+  availableSeats: Int!
+  farePerPassenger: FareBreakdown!
+}
+
+type FareBreakdown {
+  baseFarePence: Int!
+  taxesPence: Int!
+  totalPence: Int!
+  currency: String!
+}
+
+type Airport {
+  iataCode: String!
+  name: String!
+  city: String!
+  country: String!
+}
+
+enum SeatClass {
+  ECONOMY
+  BUSINESS
+}
