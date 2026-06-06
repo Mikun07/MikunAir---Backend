@@ -88,7 +88,7 @@ function makeDb(): Db {
     update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) }),
   };
   return {
-    transaction: vi.fn().mockImplementation(async (fn: (trx: typeof trx) => Promise<Booking>) => fn(trx)),
+    transaction: vi.fn().mockImplementation(async (fn: (trx: unknown) => Promise<Booking>) => fn(trx)),
   } as unknown as Db;
 }
 
