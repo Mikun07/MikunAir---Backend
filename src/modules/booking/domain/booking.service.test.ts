@@ -82,7 +82,7 @@ function makeFlightRepo(flight: Flight | null = makeFlight()): IFlightRepository
   };
 }
 
-function makeDb(booking: Booking = makeBooking()): Db {
+function makeDb(): Db {
   const trx = {
     execute: vi.fn().mockResolvedValue([{ id: 'flight-1', seats: 10 }]),
     update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) }),

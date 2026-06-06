@@ -2,7 +2,7 @@
   "root": true,
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": "./tsconfig.json",
+    "project": ["./tsconfig.json", "./tsconfig.test.json"],
     "ecmaVersion": 2022
   },
   "plugins": ["@typescript-eslint"],
@@ -22,5 +22,15 @@
   "env": {
     "node": true,
     "es2022": true
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts"],
+      "rules": {
+        "@typescript-eslint/unbound-method": "off",
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "no-console": "off"
+      }
+    }
+  ]
 }
