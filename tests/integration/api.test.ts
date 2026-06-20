@@ -318,11 +318,9 @@ describe('IT-009 No seats available', () => {
 
 describe('IT-010 Concurrent booking on last seat', () => {
   it('exactly one of two simultaneous requests succeeds when one seat remains', async () => {
-    const [r2Login] = await Promise.all([
-      request(app).post('/api/v1/auth/register').send({
-        email: 'user2@test.com', password: 'Password2!', consentGiven: true,
-      }),
-    ]);
+    const r2Login = await request(app).post('/api/v1/auth/register').send({
+      email: 'user2@test.com', password: 'Password2!', consentGiven: true,
+    });
     const token2 = r2Login.body.accessToken as string;
     const token1 = accessToken;
 
