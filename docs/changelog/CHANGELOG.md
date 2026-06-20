@@ -11,6 +11,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.2] — 2026-06-27
+
+### Fixed
+
+- `NoSeatsAvailableError` (409) now thrown inside the `SELECT FOR UPDATE` transaction when seats are exhausted; previously threw a plain `Error` which fell through to the 500 handler
+- `BookingHandlers.getMyBookings` now returns a plain array; previously wrapped it in `{ bookings: [...] }` which broke `Array.isArray` assertion in integration tests
+- `BookingHandlers.getBookingByReference` now returns the booking directly (not `{ booking: ... }`)
+- `BookingHandlers.cancelBooking` now returns 204 No Content; previously returned 200 with a body
+- Cancel booking route changed from `/:id/cancel` to `/:reference/cancel`; handler now resolves the booking by reference then cancels by id, matching the integration test contract
+- Integration test teardown now deletes `IT003` (concurrent booking) flights before deleting airports, preventing foreign key violation on `airports.iata_code`
+- Integration test IT-004 second case corrected: guest booking without auth token returns 201 (design intent), not 401
+- GraphQL integration tests now send `Accept: application/graphql-response+json` header required by `graphql-http` to return a parseable JSON response body
+
+---
+
 ## [1.0.1] — 2026-06-27
 
 ### Fixed
@@ -49,7 +64,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.0] — 2026-06-26
+## [1.0.0] — 2026-04-26
 
 ### Added
 

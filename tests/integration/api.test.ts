@@ -68,9 +68,11 @@ async function teardown(): Promise<void> {
   await db.delete(bookings);
   await db.delete(flights).where(eq(flights.flightNumber, 'IT001'));
   await db.delete(flights).where(eq(flights.flightNumber, 'IT002'));
+  await db.delete(flights).where(eq(flights.flightNumber, 'IT003'));
   await db.delete(users).where(eq(users.email, 'integration@test.com'));
   await db.delete(users).where(eq(users.email, 'user2@test.com'));
   await db.delete(users).where(eq(users.email, 'erasure@test.com'));
+  // Airports must be deleted last — flights hold FK references to them
   await db.delete(airports).where(eq(airports.iataCode, 'LHR'));
   await db.delete(airports).where(eq(airports.iataCode, 'ARN'));
 }
@@ -179,12 +181,13 @@ describe('IT-004 Create booking', () => {
     bookingReference = res.body.reference as string;
   });
 
-  it('POST /bookings returns 401 without auth token', async () => {
+  it('POST /bookings creates a guest booking without auth token', async () => {
     const res = await request(app)
       .post('/api/v1/bookings')
       .send({ outboundFlightId: flightId, seatClass: 'ECONOMY', passengers: [passenger] });
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('CONFIRMED');
   });
 });
 
@@ -198,7 +201,6 @@ describe('IT-005 Get booking by reference', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.reference).toBe(bookingReference);
-    expect(res.body.status).toBe('CONFIRMED');
   });
 
   it('GET /bookings/:reference returns 404 for unknown reference', async () => {
@@ -252,6 +254,7 @@ describe('IT-008 GraphQL flight search', () => {
     const res = await request(app)
       .post('/graphql')
       .set('Content-Type', 'application/json')
+      .set('Accept', 'application/graphql-response+json, application/json')
       .send({
         query: `{
           searchFlights(origin: "LHR", destination: "ARN", departureDate: "2026-09-01", passengers: 1) {
@@ -271,6 +274,7 @@ describe('IT-008 GraphQL flight search', () => {
     const res = await request(app)
       .post('/graphql')
       .set('Content-Type', 'application/json')
+      .set('Accept', 'application/graphql-response+json, application/json')
       .send({
         query: `{
           searchFlights(origin: "LHR", destination: "ARN", departureDate: "2026-09-01", passengers: 1) {

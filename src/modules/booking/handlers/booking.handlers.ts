@@ -22,7 +22,7 @@ export class BookingHandlers {
     try {
       const userId = req.user!.sub;
       const bookings = await this.bookingService.getBookingHistory(userId);
-      res.status(200).json({ bookings });
+      res.status(200).json(bookings);
     } catch (err) {
       next(err);
     }
@@ -35,7 +35,7 @@ export class BookingHandlers {
         reference,
         req.user?.sub,
       );
-      res.status(200).json({ booking });
+      res.status(200).json(booking);
     } catch (err) {
       next(err);
     }
@@ -43,10 +43,11 @@ export class BookingHandlers {
 
   cancelBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params as { id: string };
+      const { reference } = req.params as { reference: string };
       const userId = req.user!.sub;
-      await this.bookingService.cancelBooking(id, userId);
-      res.status(200).json({ message: 'Booking cancelled.' });
+      const booking = await this.bookingService.getBookingByReference(reference, userId);
+      await this.bookingService.cancelBooking(booking.id, userId);
+      res.status(204).send();
     } catch (err) {
       next(err);
     }

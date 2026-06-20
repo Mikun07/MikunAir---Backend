@@ -3,6 +3,7 @@ import {
   BookingNotFoundError,
   BookingAlreadyCancelledError,
   ForbiddenError,
+  NoSeatsAvailableError,
 } from '../../../shared/errors/index.js';
 import type { eventBus as EventBusType } from '../../../shared/events/index.js';
 import type { IBookingRepository, Booking, CreateBookingDTO, BookingConfirmation } from './types.js';
@@ -66,7 +67,7 @@ export class BookingService {
       ) as unknown) as Array<{ id: string; seats: number }>;
 
       if (!lockedOutbound || lockedOutbound.seats < passengerCount) {
-        throw new Error('NO_SEATS_AVAILABLE');
+        throw new NoSeatsAvailableError();
       }
 
       // Decrement outbound seats
@@ -85,7 +86,7 @@ export class BookingService {
         ) as unknown) as Array<{ id: string; seats: number }>;
 
         if (!lockedInbound || lockedInbound.seats < passengerCount) {
-          throw new Error('NO_SEATS_AVAILABLE');
+          throw new NoSeatsAvailableError();
         }
 
         await trx
