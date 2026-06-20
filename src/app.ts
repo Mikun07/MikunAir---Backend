@@ -4,7 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import { createHandler } from 'graphql-http/lib/use/express';
+import { graphql, parse, validate } from 'graphql';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import depthLimit from 'graphql-depth-limit';
 import { readFileSync } from 'node:fs';
@@ -125,13 +125,35 @@ export function createApp(): express.Application {
   app.use('/api/', limiter);
 
   // ── GraphQL endpoint ──────────────────────────────────────────────────────
-  app.use(
-    '/graphql',
-    createHandler({
-      schema,
-      validationRules: [depthLimit(5)],
-    }),
-  );
+  app.post('/graphql', async (req, res) => {
+    const { query, variables, operationName } = req.body as {
+      query?: string;
+      variables?: Record<string, unknown>;
+      operationName?: string;
+    };
+
+    if (!query) {
+      res.status(400).json({ errors: [{ message: 'Missing query' }] });
+      return;
+    }
+
+    let document;
+    try {
+      document = parse(query);
+    } catch (err) {
+      res.status(400).json({ errors: [{ message: String(err) }] });
+      return;
+    }
+
+    const validationErrors = validate(schema, document, [depthLimit(5)]);
+    if (validationErrors.length) {
+      res.status(400).json({ errors: validationErrors.map((e) => ({ message: e.message })) });
+      return;
+    }
+
+    const result = await graphql({ schema, source: query, variableValues: variables, operationName });
+    res.status(200).json(result);
+  });
 
   // ── REST endpoints ────────────────────────────────────────────────────────
   const v1 = '/api/v1';

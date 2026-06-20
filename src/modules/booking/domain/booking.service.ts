@@ -11,8 +11,6 @@ import type { IFlightRepository } from '../../flight/domain/types.js';
 import { FlightAvailabilityService } from '../../flight/domain/flight-availability.service.js';
 import type { Db } from '../../../shared/database/index.js';
 import { sql } from 'drizzle-orm';
-import { flights } from '../../../shared/database/index.js';
-import { eq } from 'drizzle-orm';
 
 export class BookingService {
   private readonly flightAvailability: FlightAvailabilityService;
@@ -62,40 +60,34 @@ export class BookingService {
         dto.seatClass === 'ECONOMY' ? 'economy_seats_available' : 'business_seats_available';
 
       // Lock outbound flight row — SELECT FOR UPDATE
-      const [lockedOutbound] = (await trx.execute(
-        sql`SELECT id, ${sql.raw(seatColumn)} as seats FROM flights WHERE id = ${dto.outboundFlightId} FOR UPDATE`,
-      ) as unknown) as Array<{ id: string; seats: number }>;
+      const lockOutbound = await trx.execute(
+        sql`SELECT id, ${sql.raw(seatColumn)} AS seats FROM flights WHERE id = ${dto.outboundFlightId} FOR UPDATE`,
+      );
+      const lockedOutbound = (lockOutbound as unknown as { rows: Array<{ id: string; seats: number }> }).rows[0];
 
       if (!lockedOutbound || lockedOutbound.seats < passengerCount) {
         throw new NoSeatsAvailableError();
       }
 
       // Decrement outbound seats
-      await trx
-        .update(flights)
-        .set({
-          [seatColumn]: sql`${sql.raw(seatColumn)} - ${passengerCount}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(flights.id, dto.outboundFlightId));
+      await trx.execute(
+        sql`UPDATE flights SET ${sql.raw(seatColumn)} = ${sql.raw(seatColumn)} - ${passengerCount}, updated_at = NOW() WHERE id = ${dto.outboundFlightId}`,
+      );
 
       // Lock and decrement inbound flight if present
       if (dto.inboundFlightId) {
-        const [lockedInbound] = (await trx.execute(
-          sql`SELECT id, ${sql.raw(seatColumn)} as seats FROM flights WHERE id = ${dto.inboundFlightId} FOR UPDATE`,
-        ) as unknown) as Array<{ id: string; seats: number }>;
+        const lockInbound = await trx.execute(
+          sql`SELECT id, ${sql.raw(seatColumn)} AS seats FROM flights WHERE id = ${dto.inboundFlightId} FOR UPDATE`,
+        );
+        const lockedInbound = (lockInbound as unknown as { rows: Array<{ id: string; seats: number }> }).rows[0];
 
         if (!lockedInbound || lockedInbound.seats < passengerCount) {
           throw new NoSeatsAvailableError();
         }
 
-        await trx
-          .update(flights)
-          .set({
-            [seatColumn]: sql`${sql.raw(seatColumn)} - ${passengerCount}`,
-            updatedAt: new Date(),
-          })
-          .where(eq(flights.id, dto.inboundFlightId));
+        await trx.execute(
+          sql`UPDATE flights SET ${sql.raw(seatColumn)} = ${sql.raw(seatColumn)} - ${passengerCount}, updated_at = NOW() WHERE id = ${dto.inboundFlightId}`,
+        );
       }
 
       // Create the booking record inside the same transaction

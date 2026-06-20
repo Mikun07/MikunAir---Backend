@@ -254,7 +254,6 @@ describe('IT-008 GraphQL flight search', () => {
     const res = await request(app)
       .post('/graphql')
       .set('Content-Type', 'application/json')
-      .set('Accept', 'application/graphql-response+json, application/json')
       .send({
         query: `{
           searchFlights(origin: "LHR", destination: "ARN", departureDate: "2026-09-01", passengers: 1) {
@@ -274,7 +273,6 @@ describe('IT-008 GraphQL flight search', () => {
     const res = await request(app)
       .post('/graphql')
       .set('Content-Type', 'application/json')
-      .set('Accept', 'application/graphql-response+json, application/json')
       .send({
         query: `{
           searchFlights(origin: "LHR", destination: "ARN", departureDate: "2026-09-01", passengers: 1) {
