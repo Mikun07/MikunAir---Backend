@@ -11,6 +11,44 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.1] — 2026-06-27
+
+### Fixed
+
+- TypeScript type error in `src/graphql/resolvers.ts`: `Flight.origin` and `Flight.destination` are `Airport` objects — resolved to `.iataCode` string before mapping to `FlightOption`
+- TypeScript type error in `src/shared/logger/logger.ts`: `level` and `message` destructured as `unknown` from `Record<string, unknown>` — cast to `string` to satisfy `TransformableInfo` return type
+
+### Added
+
+- `tsconfig.test.json` — extends base tsconfig to include `*.test.ts` files; required so ESLint typed linting can parse test files without polluting the production build
+- ESLint `overrides` block for `**/*.test.ts`: disables `@typescript-eslint/unbound-method` (false positive on Vitest `expect` matchers) and `@typescript-eslint/explicit-function-return-type` (unnecessary in test helpers)
+- Unit test suite (`src/**/*.test.ts`) — 44 tests across 4 domain service files, 90%+ line/branch/function coverage:
+  - `booking-reference.factory.test.ts` — format, character set, ambiguous character exclusion, uniqueness
+  - `flight-availability.service.test.ts` — search delegation, `getFlightOrThrow` not-found, `assertSeatsAvailable` boundary conditions
+  - `identity.service.test.ts` — register (conflict, hashing, consent timestamp, DTO shape), login (wrong password, unknown email), refresh, GDPR erasure
+  - `booking.service.test.ts` — create (not-found, price calculation, event publish, status update), cancel (not-found, forbidden, already-cancelled, guest booking), history, get-by-reference
+- Integration test suite (`tests/integration/api.test.ts`) — 13 Supertest scenarios against a live PostgreSQL database:
+  - IT-001 Health check
+  - IT-002 Register (success + duplicate 409)
+  - IT-003 Login (success + wrong password + unknown email)
+  - IT-004 Create booking (success + unauthenticated 401)
+  - IT-005 Get booking by reference (success + 404)
+  - IT-006 Booking history
+  - IT-007 Cancel booking (success + already-cancelled 409)
+  - IT-008 GraphQL flight search
+  - IT-009 No seats available 409
+  - IT-010 Concurrent booking on last seat: two simultaneous requests, exactly one 201 and one 409
+  - IT-011 GDPR erasure: PII anonymised, user row unqueryable by email after erasure
+  - IT-012 Stack traces never leak in error responses
+  - IT-013 Input validation returns 422 for missing required fields
+- Initial Drizzle migration (`src/shared/database/migrations/0000_abnormal_stature.sql`) generated from schema, committed so CI can run `db:migrate` without a local `db:generate` step
+
+### Changed
+
+- `src/shared/database/migrate.ts` — replaced `runMigrations().catch(...)` promise chain with top-level `await` inside `try/catch` (ESLint `unicorn/prefer-top-level-await`)
+
+---
+
 ## [1.0.0] — 2026-06-26
 
 ### Added
@@ -52,8 +90,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - ADR-001: Modular Monolith selected over microservices
 - ADR-002: PostgreSQL selected for ACID transaction support (overbooking prevention)
 - ADR-003: Stateless JWT (15-min access + HTTP-only refresh cookie)
-- ADR-004: Hybrid API — GraphQL for search, REST for operations
-- ADR-005: Drizzle ORM — TypeScript-native, SQL-close, zero runtime overhead
+- ADR-004: Hybrid API GraphQL for search, REST for operations
+- ADR-005: Drizzle ORM TypeScript-native, SQL-close, zero runtime overhead
 
 ---
 

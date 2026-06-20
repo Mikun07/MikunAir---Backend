@@ -1,6 +1,6 @@
 {
   "name": "mikunair-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MikunAir flight booking API — Node.js/Express/TypeScript backend",
   "type": "module",
   "main": "dist/server.js",
