@@ -125,6 +125,7 @@ export function createApp(): express.Application {
   app.use('/api/', limiter);
 
   // ── GraphQL endpoint ──────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   app.post('/graphql', async (req, res) => {
     const { query, variables, operationName } = req.body as {
       query?: string;
