@@ -22,7 +22,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Cancel booking route changed from `/:id/cancel` to `/:reference/cancel`; handler now resolves the booking by reference then cancels by id, matching the integration test contract
 - Integration test teardown now deletes `IT003` (concurrent booking) flights before deleting airports, preventing foreign key violation on `airports.iata_code`
 - Integration test IT-004 second case corrected: guest booking without auth token returns 201 (design intent), not 401
-- GraphQL integration tests now send `Accept: application/graphql-response+json` header required by `graphql-http` to return a parseable JSON response body
+- GraphQL endpoint replaced `graphql-http`'s `createHandler` with a plain Express async handler using `graphql()` + `parse()` + `validate()` directly; `graphql-http` enforced strict Accept/Content-Type spec compliance incompatible with the Supertest test client in CI
 
 ---
 
