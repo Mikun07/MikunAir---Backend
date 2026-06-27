@@ -5,6 +5,7 @@ import {
   BookingAlreadyCancelledError,
   ForbiddenError,
   FlightNotFoundError,
+  NoSeatsAvailableError,
 } from '../../../shared/errors/index.js';
 import type { IBookingRepository, Booking, CreateBookingDTO } from './types.js';
 import type { IFlightRepository, Flight } from '../../flight/domain/types.js';
@@ -82,34 +83,35 @@ function makeFlightRepo(flight: Flight | null = makeFlight()): IFlightRepository
   };
 }
 
-function makeDb(): Db {
-  let executeCallCount = 0;
+type TrxResponses = Array<{ rows: unknown[] }>;
+
+function makeDb(trxResponses?: TrxResponses): Db {
+  // Default response sequence for a one-way outbound-only booking:
+  //   call 1 → SELECT FOR UPDATE outbound (seat row)
+  //   call 2 → UPDATE outbound seats (no rows)
+  //   call 3 → INSERT INTO bookings (booking row)
+  //   call 4+ → INSERT segments/passengers (no rows)
+  const defaultResponses: TrxResponses = [
+    { rows: [{ id: 'flight-1', seats: 10 }] },
+    { rows: [] },
+    { rows: [{ id: 'booking-1', reference: 'ABC123', user_id: 'user-1', status: 'PENDING', total_price_pence: 0, created_at: new Date(), updated_at: new Date() }] },
+    { rows: [] },
+    { rows: [] },
+  ];
+  const responses = trxResponses ?? defaultResponses;
+
+  let callCount = 0;
   const trx = {
     execute: vi.fn().mockImplementation(() => {
-      executeCallCount += 1;
-      // Call 1: SELECT FOR UPDATE outbound → seat row
-      // Call 2: UPDATE outbound seats → no rows needed
-      // Call 3: INSERT INTO bookings → booking row
-      // Call 4+: INSERT segments/passengers → no rows needed
-      if (executeCallCount === 1) {
-        return Promise.resolve({ rows: [{ id: 'flight-1', seats: 10 }] });
-      }
-      if (executeCallCount === 3) {
-        return Promise.resolve({
-          rows: [{
-            id: 'booking-1', reference: 'ABC123', user_id: 'user-1',
-            status: 'PENDING', total_price_pence: 0,
-            created_at: new Date(), updated_at: new Date(),
-          }],
-        });
-      }
-      return Promise.resolve({ rows: [] });
+      const resp = responses[callCount] ?? { rows: [] };
+      callCount += 1;
+      return Promise.resolve(resp);
     }),
   };
-  executeCallCount = 0;
+
   return {
     transaction: vi.fn().mockImplementation(async (fn: (trx: unknown) => Promise<Booking>) => {
-      executeCallCount = 0;
+      callCount = 0;
       return fn(trx);
     }),
   } as unknown as Db;
@@ -186,6 +188,64 @@ describe('BookingService', () => {
       await service.createBooking(makeDto());
 
       expect(bookingRepo.updateStatus).toHaveBeenCalledWith('booking-1', 'CONFIRMED');
+    });
+
+    it('throws NoSeatsAvailableError when the locked outbound row has no seats', async () => {
+      // Simulate the SELECT FOR UPDATE returning 0 seats — triggers the in-transaction guard
+      db = makeDb([
+        { rows: [{ id: 'flight-1', seats: 0 }] },
+      ]);
+      service = new BookingService(bookingRepo, flightRepo, db, events as never);
+
+      await expect(service.createBooking(makeDto())).rejects.toThrow(NoSeatsAvailableError);
+    });
+
+    it('includes inbound flight fare in total price for a return booking', async () => {
+      const inboundFlight = makeFlight({ id: 'flight-2', economyFarePence: 7500 });
+      flightRepo = makeFlightRepo();
+      vi.mocked(flightRepo.findById)
+        .mockResolvedValueOnce(makeFlight())       // outbound pre-check
+        .mockResolvedValueOnce(inboundFlight);     // inbound pre-check
+      // Response sequence for outbound + inbound transaction:
+      //   1: SELECT FOR UPDATE outbound
+      //   2: UPDATE outbound
+      //   3: SELECT FOR UPDATE inbound
+      //   4: UPDATE inbound
+      //   5: INSERT booking → returns booking row
+      //   6+: INSERT segments/passengers
+      db = makeDb([
+        { rows: [{ id: 'flight-1', seats: 10 }] },
+        { rows: [] },
+        { rows: [{ id: 'flight-2', seats: 10 }] },
+        { rows: [] },
+        { rows: [{ id: 'booking-1', reference: 'ABC123', user_id: 'user-1', status: 'PENDING', total_price_pence: 0, created_at: new Date(), updated_at: new Date() }] },
+        { rows: [] },
+        { rows: [] },
+      ]);
+      service = new BookingService(bookingRepo, flightRepo, db, events as never);
+
+      const dto = makeDto({ inboundFlightId: 'flight-2' });
+      const result = await service.createBooking(dto);
+
+      // outbound 8500p + inbound 7500p = 16000p for 1 passenger
+      expect(result.totalPricePence).toBe(16000);
+    });
+
+    it('throws NoSeatsAvailableError when the locked inbound row has no seats', async () => {
+      const inboundFlight = makeFlight({ id: 'flight-2', economySeatsAvailable: 10 });
+      flightRepo = makeFlightRepo();
+      vi.mocked(flightRepo.findById)
+        .mockResolvedValueOnce(makeFlight())
+        .mockResolvedValueOnce(inboundFlight);
+      // Outbound lock succeeds; inbound lock returns 0 seats
+      db = makeDb([
+        { rows: [{ id: 'flight-1', seats: 10 }] },
+        { rows: [] },
+        { rows: [{ id: 'flight-2', seats: 0 }] },
+      ]);
+      service = new BookingService(bookingRepo, flightRepo, db, events as never);
+
+      await expect(service.createBooking(makeDto({ inboundFlightId: 'flight-2' }))).rejects.toThrow(NoSeatsAvailableError);
     });
   });
 
