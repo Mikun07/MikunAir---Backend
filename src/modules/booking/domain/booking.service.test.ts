@@ -83,12 +83,35 @@ function makeFlightRepo(flight: Flight | null = makeFlight()): IFlightRepository
 }
 
 function makeDb(): Db {
+  let executeCallCount = 0;
   const trx = {
-    execute: vi.fn().mockResolvedValue({ rows: [{ id: 'flight-1', seats: 10 }] }),
-    update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) }),
+    execute: vi.fn().mockImplementation(() => {
+      executeCallCount += 1;
+      // Call 1: SELECT FOR UPDATE outbound → seat row
+      // Call 2: UPDATE outbound seats → no rows needed
+      // Call 3: INSERT INTO bookings → booking row
+      // Call 4+: INSERT segments/passengers → no rows needed
+      if (executeCallCount === 1) {
+        return Promise.resolve({ rows: [{ id: 'flight-1', seats: 10 }] });
+      }
+      if (executeCallCount === 3) {
+        return Promise.resolve({
+          rows: [{
+            id: 'booking-1', reference: 'ABC123', user_id: 'user-1',
+            status: 'PENDING', total_price_pence: 0,
+            created_at: new Date(), updated_at: new Date(),
+          }],
+        });
+      }
+      return Promise.resolve({ rows: [] });
+    }),
   };
+  executeCallCount = 0;
   return {
-    transaction: vi.fn().mockImplementation(async (fn: (trx: unknown) => Promise<Booking>) => fn(trx)),
+    transaction: vi.fn().mockImplementation(async (fn: (trx: unknown) => Promise<Booking>) => {
+      executeCallCount = 0;
+      return fn(trx);
+    }),
   } as unknown as Db;
 }
 
@@ -137,22 +160,18 @@ describe('BookingService', () => {
         ],
       });
 
-      await service.createBooking(dto);
+      const result = await service.createBooking(dto);
 
       // economy fare is 8500p, 2 passengers = 17000p
-      expect(bookingRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ totalPricePence: 17000 }),
-      );
+      expect(result.totalPricePence).toBe(17000);
     });
 
     it('calculates total price using business fare when seatClass is BUSINESS', async () => {
       const dto = makeDto({ seatClass: 'BUSINESS' });
 
-      await service.createBooking(dto);
+      const result = await service.createBooking(dto);
 
-      expect(bookingRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ totalPricePence: 32000 }),
-      );
+      expect(result.totalPricePence).toBe(32000);
     });
 
     it('publishes a booking.confirmed event after successful booking', async () => {

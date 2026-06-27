@@ -55,6 +55,8 @@ export class BookingService {
     // This is the overbooking prevention mechanism (FR-015).
     // The transaction locks the flight rows before checking/decrementing seats,
     // so two concurrent requests for the last seat will serialise here.
+    // All INSERTs use trx.execute() — using this.db inside a transaction would
+    // acquire a separate pool connection and deadlock against the FOR UPDATE lock.
     const booking = await this.db.transaction(async (trx) => {
       const seatColumn =
         dto.seatClass === 'ECONOMY' ? 'economy_seats_available' : 'business_seats_available';
@@ -90,12 +92,43 @@ export class BookingService {
         );
       }
 
-      // Create the booking record inside the same transaction
-      return this.bookingRepository.create({
-        ...dto,
-        reference,
-        totalPricePence,
-      });
+      // INSERT booking, segments and passengers all within the same transaction
+      const bookingResult = await trx.execute(
+        sql`INSERT INTO bookings (reference, user_id, status, total_price_pence)
+            VALUES (${reference}, ${dto.userId ?? null}, 'PENDING', ${totalPricePence})
+            RETURNING id, reference, user_id, status, total_price_pence, created_at, updated_at`,
+      );
+      const bookingRow = (bookingResult as unknown as { rows: Array<{ id: string; reference: string; user_id: string | null; status: string; total_price_pence: number; created_at: Date; updated_at: Date }> }).rows[0];
+      if (!bookingRow) throw new Error('Booking insert returned no rows');
+
+      const farePaidPence = Math.round(totalPricePence / passengerCount);
+      const flightIds = [dto.outboundFlightId, dto.inboundFlightId].filter((id): id is string => Boolean(id));
+
+      for (const flightId of flightIds) {
+        await trx.execute(
+          sql`INSERT INTO booking_segments (booking_id, flight_id, seat_class, fare_paid_pence)
+              VALUES (${bookingRow.id}, ${flightId}, ${dto.seatClass}, ${farePaidPence})`,
+        );
+      }
+
+      for (const p of dto.passengers) {
+        await trx.execute(
+          sql`INSERT INTO booking_passengers (booking_id, full_name, date_of_birth, document_type, document_number)
+              VALUES (${bookingRow.id}, ${p.fullName}, ${p.dateOfBirth}, ${p.documentType}, ${p.documentNumber})`,
+        );
+      }
+
+      return {
+        id: bookingRow.id,
+        reference: bookingRow.reference,
+        userId: bookingRow.user_id,
+        status: bookingRow.status as 'PENDING',
+        totalPricePence: bookingRow.total_price_pence,
+        segments: [],
+        passengers: [],
+        createdAt: bookingRow.created_at,
+        updatedAt: bookingRow.updated_at,
+      };
     });
 
     // Update booking status to CONFIRMED post-transaction

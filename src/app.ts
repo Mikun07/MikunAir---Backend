@@ -4,8 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import { graphql, parse, validate } from 'graphql';
-import { makeExecutableSchema } from '@graphql-tools/schema';
+import { graphql, parse, validate, buildSchema } from 'graphql';
 import depthLimit from 'graphql-depth-limit';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -77,14 +76,14 @@ export function createApp(): express.Application {
   const adminHandlers = new AdminHandlers(flightRepo);
 
   // ── GraphQL Schema ────────────────────────────────────────────────────────
+  // buildSchema from the graphql package itself avoids the duplicate-module
+  // error that occurs when @graphql-tools/schema bundles its own graphql copy.
   const typeDefs = readFileSync(
     path.join(__dirname, 'graphql/schema.graphql'),
     'utf-8',
   );
-  const schema = makeExecutableSchema({
-    typeDefs,
-    resolvers: createResolvers(flightService),
-  });
+  const schema = buildSchema(typeDefs);
+  const rootValue = createResolvers(flightService).Query;
 
   // ── Express App ───────────────────────────────────────────────────────────
   const app = express();
@@ -152,7 +151,7 @@ export function createApp(): express.Application {
       return;
     }
 
-    const result = await graphql({ schema, source: query, variableValues: variables, operationName });
+    const result = await graphql({ schema, source: query, variableValues: variables, operationName, rootValue });
     res.status(200).json(result);
   });
 

@@ -61,10 +61,10 @@ interface SearchFlightsResult {
   inbound: FlightOption[] | null;
 }
 
-export function createResolvers(flightService: FlightAvailabilityService): { Query: { searchFlights: (_: unknown, args: SearchFlightsArgs) => Promise<SearchFlightsResult> } } {
+export function createResolvers(flightService: FlightAvailabilityService): { Query: { searchFlights: (args: SearchFlightsArgs) => Promise<SearchFlightsResult> } } {
   return {
     Query: {
-      searchFlights: async (_: unknown, args: SearchFlightsArgs): Promise<SearchFlightsResult> => {
+      searchFlights: async (args: SearchFlightsArgs): Promise<SearchFlightsResult> => {
         const params = FlightSearchParamsSchema.parse(args);
         const seatClass = params.seatClass ?? 'ECONOMY';
 

@@ -23,6 +23,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Integration test teardown now deletes `IT003` (concurrent booking) flights before deleting airports, preventing foreign key violation on `airports.iata_code`
 - Integration test IT-004 second case corrected: guest booking without auth token returns 201 (design intent), not 401
 - GraphQL endpoint replaced `graphql-http`'s `createHandler` with a plain Express async handler using `graphql()` + `parse()` + `validate()` directly; `graphql-http` enforced strict Accept/Content-Type spec compliance incompatible with the Supertest test client in CI
+- Booking transaction deadlock resolved: `bookingRepository.create()` was called with `this.db` (outer pool connection) inside a `db.transaction()` callback; the pool was exhausted waiting for the `FOR UPDATE` lock held by `trx`, causing a deadlock and 30 s timeout. All INSERTs (bookings, segments, passengers) are now executed via `trx.execute(sql\`...\`)` within the same transaction connection
+- GraphQL `Cannot use GraphQLSchema from another module or realm` error resolved: `@graphql-tools/schema`'s `makeExecutableSchema` bundled its own copy of `graphql`, causing the schema object to belong to a different module instance than `validate()`. Replaced with `buildSchema` from the `graphql` package and `rootValue` resolver attachment — single `graphql` instance throughout
+- Unit test mock for `BookingService.createBooking` updated: `trx.execute` mock now returns `{ rows: [...] }` (matching `node-postgres` `QueryResult` shape) and sequences different return values per call order to cover the seat lock, seat update, booking INSERT, and segment/passenger INSERTs
 
 ---
 
