@@ -1,6 +1,6 @@
 {
   "name": "mikunair-backend",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MikunAir flight booking API — Node.js/Express/TypeScript backend",
   "type": "module",
   "main": "dist/server.js",
@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@graphql-tools/schema": "^10.0.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "drizzle-orm": "^0.30.0",
+    "drizzle-orm": "^0.45.2",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
     "graphql": "^16.8.1",
@@ -35,9 +35,9 @@
     "graphql-http": "^1.22.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.13",
+    "nodemailer": "^9.0.1",
     "pg": "^8.11.5",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "winston": "^3.13.0",
     "zod": "^3.23.4"
   },
@@ -56,14 +56,14 @@
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
-    "@vitest/coverage-v8": "^1.6.0",
-    "drizzle-kit": "^0.21.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.0",
     "husky": "^9.1.7",
     "supertest": "^7.0.0",
     "tsx": "^4.11.0",
     "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": ">=20.0.0"

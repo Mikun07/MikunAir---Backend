@@ -11,6 +11,23 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.3] — 2026-06-27
+
+### Security
+
+- `drizzle-orm` upgraded `^0.30.0` → `^0.45.2` — fixes GHSA-gpj5-g38j-94v9 (SQL injection via improperly escaped SQL identifiers in `sql.raw()`)
+- `nodemailer` upgraded `^6.9.13` → `^9.0.1` — fixes 8 CVEs: SMTP command injection (GHSA-c7w3-x93f-qmm8, GHSA-vvjj-xcjg-gr5g), CRLF injection (GHSA-268h-hp4c-crq3), improper TLS validation (GHSA-r7g4-qg5f-qqm2), SSRF via raw message option (GHSA-p6gq-j5cr-w38f), and others
+- `bcrypt` upgraded `^5.1.1` → `^6.0.0` — removes dependency on `@mapbox/node-pre-gyp` which transitively pulled in `tar <=7.5.15`; fixes 7 high-severity `node-tar` path traversal and symlink poisoning CVEs (install-time only, not runtime)
+- `uuid` upgraded `^9.0.1` → `^11.1.1` — fixes GHSA-w5hq-g745-h8pq (buffer bounds check missing in v3/v5/v6 when `buf` is provided; moderate severity)
+- `vitest` + `@vitest/coverage-v8` upgraded `^1.6.0` → `^4.1.9` — resolves 2 critical esbuild CVEs (GHSA-67mh-4wv8-2f99) in the dev toolchain; dev dependency only, no production exposure
+- `drizzle-kit` upgraded `^0.21.0` → `^0.31.10` — reduces transitive esbuild vulnerability surface via `@esbuild-kit/esm-loader`; dev CLI only, never executed in production
+
+### Notes
+
+- 4 moderate vulnerabilities remain in `@esbuild-kit/core-utils` (transitive of `drizzle-kit`). npm's suggested fix (`drizzle-kit@0.18.1`) would reintroduce the drizzle-orm SQL injection CVE. The esbuild CVE (dev-server cross-origin requests) has zero exposure in CI or production use of `drizzle-kit generate`/`migrate`. Accepted residual risk documented here.
+
+---
+
 ## [1.0.2] — 2026-06-27
 
 ### Fixed
