@@ -17,8 +17,8 @@ type FlightSearchResult {
 type FlightOption {
   id: ID!
   flightNumber: String!
-  origin: Airport!
-  destination: Airport!
+  origin: String!
+  destination: String!
   departureAt: String!
   arrivalAt: String!
   durationMinutes: Int!
@@ -32,13 +32,6 @@ type FareBreakdown {
   taxesPence: Int!
   totalPence: Int!
   currency: String!
-}
-
-type Airport {
-  iataCode: String!
-  name: String!
-  city: String!
-  country: String!
 }
 
 enum SeatClass {

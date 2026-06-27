@@ -355,6 +355,17 @@ describe('IT-010 Concurrent booking on last seat', () => {
     expect(statuses).toContain(201);
     expect(statuses).toContain(409);
 
+    // booking_segments FK references flights — must clear related rows first
+    const it003SegRows = await db.select({ bookingId: bookingSegments.bookingId })
+      .from(bookingSegments)
+      .where(eq(bookingSegments.flightId, concurrentFlight.id));
+    for (const seg of it003SegRows) {
+      await db.delete(bookingPassengers).where(eq(bookingPassengers.bookingId, seg.bookingId));
+    }
+    await db.delete(bookingSegments).where(eq(bookingSegments.flightId, concurrentFlight.id));
+    for (const seg of it003SegRows) {
+      await db.delete(bookings).where(eq(bookings.id, seg.bookingId));
+    }
     await db.delete(flights).where(eq(flights.flightNumber, 'IT003'));
   });
 });
