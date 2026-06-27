@@ -49,11 +49,34 @@ export interface BookingConfirmation {
   totalPricePence: number;
 }
 
+export interface FlightHistorySegment {
+  flightId: string;
+  flightNumber: string;
+  originIata: string;
+  originCity: string;
+  destinationIata: string;
+  destinationCity: string;
+  departureAt: Date;
+  arrivalAt: Date;
+  seatClass: SeatClass;
+  farePaidPence: number;
+}
+
+export interface BookingHistoryEntry {
+  id: string;
+  reference: string;
+  status: BookingStatus;
+  totalPricePence: number;
+  createdAt: Date;
+  segments: FlightHistorySegment[];
+}
+
 export interface IBookingRepository {
   create(dto: CreateBookingDTO & { reference: string; totalPricePence: number }): Promise<Booking>;
   findById(id: string): Promise<Booking | null>;
   findByReference(reference: string): Promise<Booking | null>;
   findByUserId(userId: string): Promise<Booking[]>;
+  findHistoryByUserId(userId: string): Promise<BookingHistoryEntry[]>;
   updateStatus(id: string, status: BookingStatus): Promise<void>;
   findAllForFlight(flightId: string): Promise<Booking[]>;
 }

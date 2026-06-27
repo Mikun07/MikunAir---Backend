@@ -41,6 +41,16 @@ export class BookingHandlers {
     }
   };
 
+  getFlightHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.sub;
+      const history = await this.bookingService.getFlightHistory(userId);
+      res.status(200).json(history);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   cancelBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { reference } = req.params as { reference: string };

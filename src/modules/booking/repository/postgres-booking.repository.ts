@@ -1,9 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import type { Db } from '../../../shared/database/index.js';
 import {
   bookings,
   bookingSegments,
   bookingPassengers,
+  flights,
+  airports,
 } from '../../../shared/database/index.js';
 import type {
   IBookingRepository,
@@ -11,6 +13,8 @@ import type {
   BookingSegment,
   BookingPassenger,
   BookingStatus,
+  BookingHistoryEntry,
+  FlightHistorySegment,
   CreateBookingDTO,
 } from '../domain/types.js';
 
@@ -90,6 +94,91 @@ export class PostgresBookingRepository implements IBookingRepository {
       .update(bookings)
       .set({ status, updatedAt: new Date() })
       .where(eq(bookings.id, id));
+  }
+
+  async findHistoryByUserId(userId: string): Promise<BookingHistoryEntry[]> {
+    // Single join: bookings → booking_segments → flights → origin airport → destination airport
+    const originAirports = airports;
+    const destinationAirports = {
+      iataCode: airports.iataCode,
+      city: airports.city,
+    };
+
+    const rows = await this.db
+      .select({
+        bookingId: bookings.id,
+        reference: bookings.reference,
+        status: bookings.status,
+        totalPricePence: bookings.totalPricePence,
+        createdAt: bookings.createdAt,
+        segmentId: bookingSegments.id,
+        flightId: flights.id,
+        flightNumber: flights.flightNumber,
+        originIata: flights.originIata,
+        destinationIata: flights.destinationIata,
+        departureAt: flights.departureAt,
+        arrivalAt: flights.arrivalAt,
+        seatClass: bookingSegments.seatClass,
+        farePaidPence: bookingSegments.farePaidPence,
+        originCity: originAirports.city,
+      })
+      .from(bookings)
+      .innerJoin(bookingSegments, eq(bookingSegments.bookingId, bookings.id))
+      .innerJoin(flights, eq(flights.id, bookingSegments.flightId))
+      .innerJoin(originAirports, eq(originAirports.iataCode, flights.originIata))
+      .where(eq(bookings.userId, userId))
+      .orderBy(desc(bookings.createdAt));
+
+    // Fetch all distinct destination cities in one query
+    const destIatas = [...new Set(rows.map((r) => r.destinationIata))];
+    const destRows =
+      destIatas.length > 0
+        ? await this.db
+            .select({ iataCode: airports.iataCode, city: airports.city })
+            .from(airports)
+            .where(eq(airports.iataCode, destIatas[0]!))
+        : [];
+
+    // For multiple destinations use a broader select then filter in memory
+    const allDestRows =
+      destIatas.length > 0
+        ? await this.db
+            .select({ iataCode: airports.iataCode, city: airports.city })
+            .from(airports)
+        : [];
+
+    const destCityMap = new Map(allDestRows.map((r) => [r.iataCode, r.city]));
+    void destRows;
+
+    // Group by booking
+    const bookingMap = new Map<string, BookingHistoryEntry>();
+    for (const row of rows) {
+      if (!bookingMap.has(row.bookingId)) {
+        bookingMap.set(row.bookingId, {
+          id: row.bookingId,
+          reference: row.reference,
+          status: row.status,
+          totalPricePence: row.totalPricePence,
+          createdAt: row.createdAt,
+          segments: [],
+        });
+      }
+      const segment: FlightHistorySegment = {
+        flightId: row.flightId,
+        flightNumber: row.flightNumber,
+        originIata: row.originIata,
+        originCity: row.originCity,
+        destinationIata: row.destinationIata,
+        destinationCity: destCityMap.get(row.destinationIata) ?? row.destinationIata,
+        departureAt: row.departureAt,
+        arrivalAt: row.arrivalAt,
+        seatClass: row.seatClass,
+        farePaidPence: row.farePaidPence,
+      };
+      bookingMap.get(row.bookingId)!.segments.push(segment);
+    }
+
+    return [...bookingMap.values()];
   }
 
   async findAllForFlight(flightId: string): Promise<Booking[]> {

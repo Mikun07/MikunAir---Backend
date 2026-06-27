@@ -19,7 +19,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `nodemailer` upgraded `^6.9.13` → `^9.0.1` — fixes 8 CVEs: SMTP command injection (GHSA-c7w3-x93f-qmm8, GHSA-vvjj-xcjg-gr5g), CRLF injection (GHSA-268h-hp4c-crq3), improper TLS validation (GHSA-r7g4-qg5f-qqm2), SSRF via raw message option (GHSA-p6gq-j5cr-w38f), and others
 - `bcrypt` upgraded `^5.1.1` → `^6.0.0` — removes dependency on `@mapbox/node-pre-gyp` which transitively pulled in `tar <=7.5.15`; fixes 7 high-severity `node-tar` path traversal and symlink poisoning CVEs (install-time only, not runtime)
 - `uuid` upgraded `^9.0.1` → `^11.1.1` — fixes GHSA-w5hq-g745-h8pq (buffer bounds check missing in v3/v5/v6 when `buf` is provided; moderate severity)
-- `vitest` + `@vitest/coverage-v8` upgraded `^1.6.0` → `^4.1.9` — resolves 2 critical esbuild CVEs (GHSA-67mh-4wv8-2f99) in the dev toolchain; dev dependency only, no production exposure
+- `vitest` + `@vitest/coverage-v8` upgraded `^1.6.0` → `^4.1.9` resolves 2 critical esbuild CVEs (GHSA-67mh-4wv8-2f99) in the dev toolchain; dev dependency only, no production exposure
 - `drizzle-kit` upgraded `^0.21.0` → `^0.31.10` — reduces transitive esbuild vulnerability surface via `@esbuild-kit/esm-loader`; dev CLI only, never executed in production
 
 ### Notes
@@ -50,8 +50,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- TypeScript type error in `src/graphql/resolvers.ts`: `Flight.origin` and `Flight.destination` are `Airport` objects — resolved to `.iataCode` string before mapping to `FlightOption`
-- TypeScript type error in `src/shared/logger/logger.ts`: `level` and `message` destructured as `unknown` from `Record<string, unknown>` — cast to `string` to satisfy `TransformableInfo` return type
+- TypeScript type error in `src/graphql/resolvers.ts`: `Flight.origin` and `Flight.destination` are `Airport` objects resolved to `.iataCode` string before mapping to `FlightOption`
+- TypeScript type error in `src/shared/logger/logger.ts`: `level` and `message` destructured as `unknown` from `Record<string, unknown>` cast to `string` to satisfy `TransformableInfo` return type
 
 ### Added
 
@@ -107,7 +107,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - In-process typed event bus (`EventEmitter` wrapper) for `booking.confirmed` and `booking.cancelled` events
 - Email notification service (`NotificationService`) via Nodemailer
 - Winston structured JSON logging with PII sanitiser (name, email, DOB, document fields redacted)
-- Correlation ID middleware — UUID injected on every request, propagated through all log entries
+- Correlation ID middleware UUID injected on every request, propagated through all log entries
 - Drizzle ORM schema: `users`, `flights`, `airports`, `bookings`, `booking_segments`, `booking_passengers`, `passenger_profiles`
 - Zod validation schemas for all request bodies
 - Domain exception classes: `FlightNotFoundError`, `BookingNotFoundError`, `NoSeatsAvailableError`, `BookingAlreadyCancelledError`, `UnauthorisedError`, `ForbiddenError`, `InvalidCredentialsError`, `ConflictError`, `ValidationError`

@@ -6,7 +6,7 @@ import {
   NoSeatsAvailableError,
 } from '../../../shared/errors/index.js';
 import type { eventBus as EventBusType } from '../../../shared/events/index.js';
-import type { IBookingRepository, Booking, CreateBookingDTO, BookingConfirmation } from './types.js';
+import type { IBookingRepository, Booking, BookingHistoryEntry, CreateBookingDTO, BookingConfirmation } from './types.js';
 import type { IFlightRepository } from '../../flight/domain/types.js';
 import { FlightAvailabilityService } from '../../flight/domain/flight-availability.service.js';
 import type { Db } from '../../../shared/database/index.js';
@@ -177,6 +177,10 @@ export class BookingService {
 
   async getBookingHistory(userId: string): Promise<Booking[]> {
     return this.bookingRepository.findByUserId(userId);
+  }
+
+  async getFlightHistory(userId: string): Promise<BookingHistoryEntry[]> {
+    return this.bookingRepository.findHistoryByUserId(userId);
   }
 
   async getBookingByReference(reference: string, requestingUserId?: string): Promise<Booking> {

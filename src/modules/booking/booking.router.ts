@@ -7,6 +7,7 @@ export function createBookingRouter(handlers: BookingHandlers): Router {
 
   router.post('/', optionalAuthenticate, handlers.createBooking as RequestHandler);
   router.get('/', authenticate, handlers.getMyBookings as RequestHandler);
+  router.get('/history', authenticate, handlers.getFlightHistory as RequestHandler);
   router.get('/:reference', optionalAuthenticate, handlers.getBookingByReference as RequestHandler);
   router.post('/:reference/cancel', authenticate, handlers.cancelBooking as RequestHandler);
 
