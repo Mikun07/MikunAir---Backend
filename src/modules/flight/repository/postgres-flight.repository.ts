@@ -129,8 +129,8 @@ export class PostgresFlightRepository implements IFlightRepository {
       .where(inArray(airports.iataCode, allDestIatas));
     const destMap = new Map(destRows.map((a) => [a.iataCode, a]));
 
-    const MIN_LAYOVER_MINUTES = 45;
-    const MAX_LAYOVER_MINUTES = 4 * 60;
+    const finalDest = destMap.get(params.destination);
+    if (!finalDest) return [];
 
     const pairs: ConnectingFlightPair[] = [];
 
@@ -139,24 +139,31 @@ export class PostgresFlightRepository implements IFlightRepository {
       const hubDest = destMap.get(hub);
       if (!hubDest) continue;
       const f1 = this.toFlight(l1.flight, l1.origin, hubDest);
-
-      for (const l2 of leg2Rows) {
-        if (l2.flight.originIata !== hub) continue;
-        const finalDest = destMap.get(params.destination);
-        if (!finalDest) continue;
-        const f2 = this.toFlight(l2.flight, l2.origin, finalDest);
-
-        const layoverMinutes = Math.round(
-          (f2.departureAt.getTime() - f1.arrivalAt.getTime()) / 60_000,
-        );
-
-        if (layoverMinutes < MIN_LAYOVER_MINUTES || layoverMinutes > MAX_LAYOVER_MINUTES) continue;
-
-        pairs.push({ leg1: f1, leg2: f2, layoverMinutes });
-      }
+      const leg2ForHub = leg2Rows.filter((l2) => l2.flight.originIata === hub);
+      this.pairLegs(f1, leg2ForHub, finalDest, pairs);
     }
 
     return pairs;
+  }
+
+  private pairLegs(
+    f1: Flight,
+    leg2Rows: { flight: typeof flights.$inferSelect; origin: typeof airports.$inferSelect }[],
+    finalDest: typeof airports.$inferSelect,
+    pairs: ConnectingFlightPair[],
+  ): void {
+    const MIN_LAYOVER_MINUTES = 45;
+    const MAX_LAYOVER_MINUTES = 4 * 60;
+
+    for (const l2 of leg2Rows) {
+      const f2 = this.toFlight(l2.flight, l2.origin, finalDest);
+      const layoverMinutes = Math.round(
+        (f2.departureAt.getTime() - f1.arrivalAt.getTime()) / 60_000,
+      );
+      if (layoverMinutes >= MIN_LAYOVER_MINUTES && layoverMinutes <= MAX_LAYOVER_MINUTES) {
+        pairs.push({ leg1: f1, leg2: f2, layoverMinutes });
+      }
+    }
   }
 
   async findById(id: string): Promise<Flight | null> {

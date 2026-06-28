@@ -36,10 +36,7 @@ export class PostgresBookingRepository implements IBookingRepository {
 
     if (!bookingRow) throw new Error('Booking insert returned no rows');
 
-    const farePence =
-      dto.seatClass === 'BUSINESS'
-        ? dto.totalPricePence / dto.passengers.length
-        : dto.totalPricePence / dto.passengers.length;
+    const farePence = dto.totalPricePence / dto.passengers.length;
 
     const segmentValues = [dto.outboundFlightId, dto.inboundFlightId]
       .filter((id): id is string => Boolean(id))
