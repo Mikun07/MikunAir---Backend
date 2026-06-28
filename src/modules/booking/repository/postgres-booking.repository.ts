@@ -97,12 +97,7 @@ export class PostgresBookingRepository implements IBookingRepository {
   }
 
   async findHistoryByUserId(userId: string): Promise<BookingHistoryEntry[]> {
-    // Single join: bookings → booking_segments → flights → origin airport → destination airport
     const originAirports = airports;
-    const destinationAirports = {
-      iataCode: airports.iataCode,
-      city: airports.city,
-    };
 
     const rows = await this.db
       .select({
@@ -129,26 +124,14 @@ export class PostgresBookingRepository implements IBookingRepository {
       .where(eq(bookings.userId, userId))
       .orderBy(desc(bookings.createdAt));
 
-    // Fetch all distinct destination cities in one query
-    const destIatas = [...new Set(rows.map((r) => r.destinationIata))];
-    const destRows =
-      destIatas.length > 0
-        ? await this.db
-            .select({ iataCode: airports.iataCode, city: airports.city })
-            .from(airports)
-            .where(eq(airports.iataCode, destIatas[0]!))
-        : [];
-
-    // For multiple destinations use a broader select then filter in memory
-    const allDestRows =
-      destIatas.length > 0
-        ? await this.db
-            .select({ iataCode: airports.iataCode, city: airports.city })
-            .from(airports)
-        : [];
-
-    const destCityMap = new Map(allDestRows.map((r) => [r.iataCode, r.city]));
-    void destRows;
+    const destCityMap =
+      rows.length > 0
+        ? new Map(
+            (await this.db.select({ iataCode: airports.iataCode, city: airports.city }).from(airports)).map(
+              (r) => [r.iataCode, r.city],
+            ),
+          )
+        : new Map<string, string>();
 
     // Group by booking
     const bookingMap = new Map<string, BookingHistoryEntry>();

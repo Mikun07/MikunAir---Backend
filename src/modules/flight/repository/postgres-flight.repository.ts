@@ -1,4 +1,4 @@
-import { eq, and, gte, lt, gt, lte, sql, inArray } from 'drizzle-orm';
+import { eq, and, gte, lt, sql, inArray } from 'drizzle-orm';
 import type { Db } from '../../../shared/database/index.js';
 import { flights, airports } from '../../../shared/database/index.js';
 import { FlightNotFoundError } from '../../../shared/errors/index.js';
