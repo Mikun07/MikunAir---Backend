@@ -257,7 +257,7 @@ describe('IT-008 GraphQL flight search', () => {
       .send({
         query: `{
           searchFlights(origin: "LHR", destination: "ARN", departureDate: "2026-09-01", passengers: 1) {
-            outbound { id flightNumber origin destination farePerPassenger { totalPence } }
+            outbound { id flightNumber origin { iataCode city } destination { iataCode city } farePerPassenger { totalPence } }
             inbound { id }
           }
         }`,
@@ -265,7 +265,7 @@ describe('IT-008 GraphQL flight search', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.searchFlights.outbound.length).toBeGreaterThan(0);
-    expect(res.body.data.searchFlights.outbound[0].origin).toBe('LHR');
+    expect(res.body.data.searchFlights.outbound[0].origin.iataCode).toBe('LHR');
     expect(res.body).not.toHaveProperty('errors');
   });
 
