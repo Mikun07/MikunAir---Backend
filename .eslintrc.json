@@ -31,6 +31,13 @@
         "@typescript-eslint/explicit-function-return-type": "off",
         "no-console": "off"
       }
+    },
+    {
+      "files": ["src/shared/database/seed.ts"],
+      "rules": {
+        "no-console": "off",
+        "@typescript-eslint/no-floating-promises": "off"
+      }
     }
   ]
 }

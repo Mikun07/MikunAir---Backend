@@ -109,18 +109,24 @@ const ROUTES: RouteTemplate[] = [
 
 const counters: Record<string, number> = {};
 
+function cp(s: string, i: number): number {
+  return s.codePointAt(i) ?? 0;
+}
+
 function nextFlightNumber(origin: string, destination: string): string {
   const key = `${origin}${destination}`;
   if (counters[key] === undefined) {
     const base =
-      ((origin.charCodeAt(0) + origin.charCodeAt(1) + origin.charCodeAt(2) +
-        destination.charCodeAt(0) + destination.charCodeAt(1) + destination.charCodeAt(2)) *
+      ((cp(origin, 0) + cp(origin, 1) + cp(origin, 2) +
+        cp(destination, 0) + cp(destination, 1) + cp(destination, 2)) *
         7) %
         900 +
       100;
     counters[key] = base;
   }
-  return `SK${counters[key]!++}`;
+  const current = counters[key];
+  counters[key] = current + 1;
+  return `SK${current}`;
 }
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
