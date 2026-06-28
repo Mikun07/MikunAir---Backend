@@ -33,9 +33,7 @@ export const users = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    emailIdx: uniqueIndex('users_email_idx').on(t.email),
-  }),
+  (t) => [uniqueIndex('users_email_idx').on(t.email)],
 );
 
 // ─── Passenger Profiles ───────────────────────────────────────────────────────
@@ -89,10 +87,10 @@ export const flights = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    searchIdx: index('flights_search_idx').on(t.originIata, t.destinationIata, t.departureAt),
-    flightNumberIdx: index('flights_flight_number_idx').on(t.flightNumber),
-  }),
+  (t) => [
+    index('flights_search_idx').on(t.originIata, t.destinationIata, t.departureAt),
+    index('flights_flight_number_idx').on(t.flightNumber),
+  ],
 );
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
@@ -108,10 +106,10 @@ export const bookings = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    referenceIdx: uniqueIndex('bookings_reference_idx').on(t.reference),
-    userIdx: index('bookings_user_idx').on(t.userId),
-  }),
+  (t) => [
+    uniqueIndex('bookings_reference_idx').on(t.reference),
+    index('bookings_user_idx').on(t.userId),
+  ],
 );
 
 // ─── Booking Segments ─────────────────────────────────────────────────────────
@@ -155,10 +153,10 @@ export const auditLog = pgTable(
     actorId: varchar('actor_id', { length: 36 }),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    entityIdx: index('audit_log_entity_idx').on(t.entityType, t.entityId),
-    occurredAtIdx: index('audit_log_occurred_at_idx').on(t.occurredAt),
-  }),
+  (t) => [
+    index('audit_log_entity_idx').on(t.entityType, t.entityId),
+    index('audit_log_occurred_at_idx').on(t.occurredAt),
+  ],
 );
 
 // ─── Schema Type Exports ──────────────────────────────────────────────────────

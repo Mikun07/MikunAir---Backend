@@ -1,4 +1,4 @@
-import type { IFlightRepository, Flight, FlightSearchParams, SeatClass } from './types.js';
+import type { IFlightRepository, Flight, FlightSearchParams, ConnectingFlightPair, SeatClass } from './types.js';
 import { FlightNotFoundError, NoSeatsAvailableError } from '../../../shared/errors/index.js';
 
 export class FlightAvailabilityService {
@@ -6,6 +6,10 @@ export class FlightAvailabilityService {
 
   async searchFlights(params: FlightSearchParams): Promise<Flight[]> {
     return this.flightRepository.findAvailable(params);
+  }
+
+  async searchConnectingFlights(params: FlightSearchParams): Promise<ConnectingFlightPair[]> {
+    return this.flightRepository.findConnecting(params);
   }
 
   async getFlightOrThrow(id: string): Promise<Flight> {

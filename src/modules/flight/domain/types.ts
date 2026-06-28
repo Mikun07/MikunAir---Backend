@@ -55,8 +55,15 @@ export interface UpdateFlightDTO {
   status?: FlightStatus;
 }
 
+export interface ConnectingFlightPair {
+  leg1: Flight;
+  leg2: Flight;
+  layoverMinutes: number;
+}
+
 export interface IFlightRepository {
   findAvailable(params: FlightSearchParams): Promise<Flight[]>;
+  findConnecting(params: FlightSearchParams): Promise<ConnectingFlightPair[]>;
   findById(id: string): Promise<Flight | null>;
   decrementSeatCount(
     flightId: string,

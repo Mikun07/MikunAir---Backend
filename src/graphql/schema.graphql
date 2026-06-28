@@ -12,19 +12,36 @@ type Query {
 type FlightSearchResult {
   outbound: [FlightOption!]!
   inbound: [FlightOption!]
+  connectingOutbound: [ConnectingFlightOption!]!
+  connectingInbound: [ConnectingFlightOption!]
+}
+
+type Airport {
+  iataCode: String!
+  name: String!
+  city: String!
+  country: String!
 }
 
 type FlightOption {
   id: ID!
   flightNumber: String!
-  origin: String!
-  destination: String!
+  origin: Airport!
+  destination: Airport!
   departureAt: String!
   arrivalAt: String!
   durationMinutes: Int!
   stops: Int!
   availableSeats: Int!
   farePerPassenger: FareBreakdown!
+}
+
+type ConnectingFlightOption {
+  leg1: FlightOption!
+  leg2: FlightOption!
+  layoverMinutes: Int!
+  totalDurationMinutes: Int!
+  totalFarePerPassenger: FareBreakdown!
 }
 
 type FareBreakdown {

@@ -1,4 +1,4 @@
-import { eq, and, gte, lt, sql } from 'drizzle-orm';
+import { eq, and, gte, lt, gt, lte, sql, inArray } from 'drizzle-orm';
 import type { Db } from '../../../shared/database/index.js';
 import { flights, airports } from '../../../shared/database/index.js';
 import { FlightNotFoundError } from '../../../shared/errors/index.js';
@@ -7,6 +7,7 @@ import type {
   Flight,
   Airport,
   FlightSearchParams,
+  ConnectingFlightPair,
   CreateFlightDTO,
   UpdateFlightDTO,
   SeatClass,
@@ -55,6 +56,107 @@ export class PostgresFlightRepository implements IFlightRepository {
     if (!destAirport) return [];
 
     return rows.map((r) => this.toFlight(r.flight, r.origin, destAirport));
+  }
+
+  async findConnecting(params: FlightSearchParams): Promise<ConnectingFlightPair[]> {
+    const departure = new Date(params.departureDate);
+    const nextDay = new Date(departure);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const seatFilter =
+      params.seatClass === 'BUSINESS'
+        ? sql`${flights.businessSeatsAvailable} >= ${params.passengers}`
+        : sql`${flights.economySeatsAvailable} >= ${params.passengers}`;
+
+    // Leg 1: any flight leaving origin on the search date (not going direct to destination)
+    const leg1Rows = await this.db
+      .select({ flight: flights, origin: airports })
+      .from(flights)
+      .innerJoin(airports, eq(flights.originIata, airports.iataCode))
+      .where(
+        and(
+          eq(flights.originIata, params.origin),
+          eq(flights.status, 'SCHEDULED'),
+          gte(flights.departureAt, departure),
+          lt(flights.departureAt, nextDay),
+          seatFilter,
+        ),
+      )
+      .orderBy(flights.departureAt);
+
+    if (leg1Rows.length === 0) return [];
+
+    // Collect hubs: all distinct destinations from leg 1 except the final destination
+    const hubIatas = [
+      ...new Set(
+        leg1Rows
+          .map((r) => r.flight.destinationIata)
+          .filter((iata) => iata !== params.destination),
+      ),
+    ];
+
+    if (hubIatas.length === 0) return [];
+
+    // Leg 2: flights from any hub to the final destination on the same calendar day
+    const leg2Rows = await this.db
+      .select({ flight: flights, origin: airports })
+      .from(flights)
+      .innerJoin(airports, eq(flights.originIata, airports.iataCode))
+      .where(
+        and(
+          inArray(flights.originIata, hubIatas),
+          eq(flights.destinationIata, params.destination),
+          eq(flights.status, 'SCHEDULED'),
+          gte(flights.departureAt, departure),
+          lt(flights.departureAt, nextDay),
+          seatFilter,
+        ),
+      )
+      .orderBy(flights.departureAt);
+
+    if (leg2Rows.length === 0) return [];
+
+    // Fetch all distinct destination airports needed
+    const allDestIatas = [
+      ...new Set([
+        ...leg1Rows.map((r) => r.flight.destinationIata),
+        params.destination,
+      ]),
+    ];
+    const destRows = await this.db
+      .select()
+      .from(airports)
+      .where(inArray(airports.iataCode, allDestIatas));
+    const destMap = new Map(destRows.map((a) => [a.iataCode, a]));
+
+    const MIN_LAYOVER_MINUTES = 45;
+    const MAX_LAYOVER_MINUTES = 4 * 60;
+
+    const pairs: ConnectingFlightPair[] = [];
+
+    for (const l1 of leg1Rows) {
+      const hub = l1.flight.destinationIata;
+      const hubDest = destMap.get(hub);
+      if (!hubDest) continue;
+      const f1 = this.toFlight(l1.flight, l1.origin, hubDest);
+
+      for (const l2 of leg2Rows) {
+        if (l2.flight.originIata !== hub) continue;
+        const finalDest = destMap.get(params.destination);
+        if (!finalDest) continue;
+        const f2 = this.toFlight(l2.flight, l2.origin, finalDest);
+
+        const layoverMinutes = Math.round(
+          (f2.departureAt.getTime() - f1.arrivalAt.getTime()) / 60_000,
+        );
+
+        if (layoverMinutes < MIN_LAYOVER_MINUTES || layoverMinutes > MAX_LAYOVER_MINUTES) continue;
+
+        pairs.push({ leg1: f1, leg2: f2, layoverMinutes });
+      }
+    }
+
+    return pairs;
   }
 
   async findById(id: string): Promise<Flight | null> {

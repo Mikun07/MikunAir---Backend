@@ -17,6 +17,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/shared/database/migrate.ts",
+    "db:seed": "tsx src/shared/database/seed.ts",
     "db:studio": "drizzle-kit studio",
     "validate:schema": "tsx scripts/validate-schema.ts",
     "prepare": "husky"
